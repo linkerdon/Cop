@@ -1,1 +1,544 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Video Form</title>
+  <style>
+    :root{
+      --radiusBtn: 14px;
+      --glass: rgba(255,255,255,.14);
+      --glass2: rgba(255,255,255,.10);
+      --border: rgba(255,255,255,.18);
+      --shadow: 0 18px 40px rgba(0,0,0,.35);
+    }
 
+    html, body{
+      margin:0; height:100%;
+      overflow:hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:#0b0b0d; color:#fff;
+    }
+
+    /* ✅ حذف شريط Step / Not sent */
+    .bar{ display:none !important; }
+
+    .stage{
+      position:relative;
+      height:100vh; width:100%;
+      overflow:hidden;
+      background:#000;
+    }
+
+    video{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:cover;
+      background:#000;
+      transform: scale(1.02);
+      filter: contrast(1.02) saturate(1.06);
+    }
+
+    .shade{
+      position:absolute; inset:0;
+      background:
+        radial-gradient(1200px 700px at 50% 20%, rgba(0,0,0,.15), rgba(0,0,0,.55)),
+        linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,.20) 45%, rgba(0,0,0,.75) 100%);
+      pointer-events:none;
+    }
+
+    .overlay{
+      position:absolute; inset:0;
+      display:flex;
+      flex-direction:column;
+      padding:14px;
+      gap:10px;
+      overflow:hidden;
+    }
+
+    .topBar{
+      flex: 0 0 auto;
+      z-index: 5;
+      margin-top: 10px;
+      padding:10px 10px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .title{
+      font-size:20px;
+      line-height:1.25;
+      font-weight:900;
+      letter-spacing:.2px;
+      text-shadow: 0 4px 24px rgba(0,0,0,.65);
+    }
+
+    .bottomSheet{
+      flex: 1 1 auto;
+      display:flex;
+      align-items:flex-end;
+      overflow:hidden;
+    }
+
+    /* ✅ التمرير فقط داخل panel + السماح بالسحب للأعلى */
+    .panel{
+      width:100%;
+      max-height: calc(100vh - 140px);
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      padding:12px 0 0;
+    }
+
+    .choices{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding-bottom: 12px;
+    }
+
+    .btn{
+      width:100%;
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, var(--glass), var(--glass2));
+      color:#fff;
+      border-radius: var(--radiusBtn);
+      padding:14px 14px;
+      font-size:16px;
+      font-weight:850;
+      cursor:pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      transition: transform .12s ease, border-color .12s ease;
+      text-align:left;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.28); }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+
+    .btn.primary{
+      background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.12));
+      text-align:center;
+    }
+
+    .opt{ display:flex; align-items:center; gap:12px; }
+    .badge{
+      min-width:34px; height:34px;
+      border-radius:12px;
+      display:inline-flex;
+      align-items:center; justify-content:center;
+      font-weight:950;
+      background: rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.22);
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+    }
+    .label{ font-weight:850; letter-spacing:.2px; }
+
+    .input{
+      width:100%;
+      border-radius: var(--radiusBtn);
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.30);
+      color:#fff;
+      padding:14px 14px;
+      font-size:16px;
+      outline:none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 24px rgba(0,0,0,.22);
+    }
+
+    .formCard{
+      background: linear-gradient(180deg, #7a5636 0%, #5f432a 100%);
+      min-height:100vh;
+      padding:22px 18px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:12px;
+    }
+    .formTitle{
+      font-size:18px;
+      font-weight:950;
+      line-height:1.35;
+      margin-bottom:6px;
+    }
+    .grid{ display:grid; grid-template-columns:1fr; gap:10px; }
+
+    .okBtn{
+      display:none;
+      width:100%;
+      border-radius: var(--radiusBtn);
+      padding:14px 16px;
+      background: rgba(34,197,94,.95);
+      color:#07160a;
+      font-size:18px;
+      font-weight:950;
+      border: 0;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      text-align:center;
+    }
+
+    .small{ font-size:12px; opacity:.85; padding-top:2px; }
+
+    /* ✅ زر صوت صغير ثابت (بدون كلمة "تفعيل") */
+    .soundBtn{
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 99;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.40);
+      color:#fff;
+      border-radius: 999px;
+      padding:10px 12px;
+      font-weight:900;
+      cursor:pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+
+    @media (min-width: 760px){
+      .overlay{ padding:18px 22px; }
+      .title{ font-size:26px; }
+      .panel{ max-width: 560px; }
+      .bottomSheet{ justify-content:flex-start; }
+      .topBar{ margin-top: 6px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <button class="soundBtn" id="soundBtn">🔊</button>
+
+<script>
+  const VIDEO_URLS = {
+    v1: "https://media.videoask.com/transcoded/01722b72-dc70-4771-9d32-63f93ffaf708/video.mp4?token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJtZWRpYV9pZCI6IjAxNzIyYjcyLWRjNzAtNDc3MS05ZDMyLTYzZjkzZmZhZjcwOCIsImV4cCI6MTc3MTM0OTI0OX0.hZRZnYKOKQJuYmwoRpM9NDi3f-8rsWfhG2RRwTDM06gsghuqs1JXDTRWCUEW9U1nJ4KNTRIoZ_rZrkFVPa79XohN7UY_Hb5RNg4pJT1aWuiOx3ZZ1tHhLxJ56sAq2DR8yUlq07_RXFaA7MalppkYpSgm-yM6vmFt8CvS8FCOZ9_cRmq8QzGpBLbhRAq_ddAZUb2zaFu5ABq7rg4hYNYqdjvDyGlPsTANRM4GChoE3KDLo4BACrLzdA6VIFP6Dtg9MFGTksEqo61orlNZDdI2S0moa5slBpEWucFG1CypkjXXgcOcKyDm7T1URzbtcJzf1HupGHNzHYkQfbUwBXTP3DaQiRnm3UcfNikALjAy1VjcwA1HVcIIjZLtVyZrUQ3U6dBGiRYoqAjt-RFIy9071jc8uIZQVzF598eBTLtLKi0N3bu3Tp4cJplQEG1vEiRQ73VXamS3B9loc7pFLEXM9u-uiicDd_tbDz891mNfZYgQTQpGmGNCA1U7E09zqoOQjyUnAKaYWsOXVpE0N_CUEPaiYG8YlidvVuBCGAAXZlzvXdKH_hBs_slGWt-9ufcbQIDBZMupMc9XWsGHNtXDjspSh4xioP68AeDkd2c-VCH81IEvU6ekndeJ02VglaF0ANAjD8t7gHF7bq4WQ7UD9TlBtG96FY1wM3btHNIcY2Y",
+    v2: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v4: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v5: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v6: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v7: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v8: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v9: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v10:"https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    v11:"https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+  };
+
+  const WEBHOOK_URL = "";
+
+  const steps = [
+    { id:"s1", type:"video_button", video: VIDEO_URLS.v1, title:"", button:"CONTINUER" },
+    { id:"s2", type:"video_choices", video: VIDEO_URLS.v2,
+      title:"Dans quelle région vis-tu ? 🌍",
+      key:"region",
+      choices:[["A","Europe"],["B","AMERIQUE DU NORD/SUD"],["C","DOM-TOM"],["D","Asie"],["E","AFRIQUE"],["F","OCÉANIE"]]
+    },
+    { id:"s3", type:"contact_form",
+      title:"Avant la prochaine question, quels sont tes coordonnées afin que nous puissions te recontacter ?",
+      button:"Prochaine étape",
+      fields:[
+        { key:"name", label:"Nom", placeholder:"Votre nom", required:true },
+        { key:"email", label:"Email", placeholder:"nom@email.com", required:true },
+        { key:"phone", label:"Téléphone (avec indicatif pays)", placeholder:"+33 6 00 00 00 00", required:true },
+      ]
+    },
+    { id:"s4", type:"video_choices", video: VIDEO_URLS.v4,
+      title:"Sur quels réseaux te trouves-tu actuellement?",
+      key:"reseaux",
+      choices:[["A","Instagram"],["B","tiktok"],["C","les deux"],["D","Aucun"]]
+    },
+    { id:"s5", type:"video_input", video: VIDEO_URLS.v5, title:"Quel est ton @pseudo?", key:"pseudo", placeholder:"Écrivez ici..." },
+    { id:"s6", type:"video_input", video: VIDEO_URLS.v6, title:"Quel est ton domaine d'activité/Niche ?", key:"niche", placeholder:"Quel est ton domaine d'activité/Niche ?" },
+    { id:"s7", type:"video_choices", video: VIDEO_URLS.v7, title:"Depuis combien de temps ?", key:"duree", choices:[["A","Moins de 1 an"],["B","Plus de 1 an"]] },
+    { id:"s8", type:"video_input", video: VIDEO_URLS.v8, title:"Explique ton problème", key:"probleme", placeholder:"Écrivez ici...", multiline:true },
+    { id:"s9", type:"video_choices", video: VIDEO_URLS.v9, title:"TON CHIFFRE D'AFFAIRE ?", key:"ca", choices:[["A","€0-€5k"],["B","€5k-€10k"],["C","€10k-€50k"],["D","€50k +"]] },
+    { id:"s10", type:"video_choices", video: VIDEO_URLS.v10, title:"Quel serait ton budget?", key:"budget", choices:[["A","1000€ -1500€"],["B","1500€ - 3000€"],["C","plus de 3000€"]] },
+    { id:"s11", type:"video_choices_ok", video: VIDEO_URLS.v11,
+      title:"Appuie ensuite sur ok",
+      key:"timing",
+      choices:[["A","Dès que possible"],["B","D'ici 1 à 2 semaines"],["C","Pas encore prêt.e à commencer"]]
+    },
+  ];
+
+  const app = document.getElementById("app");
+  const soundBtn = document.getElementById("soundBtn");
+
+  const state = { i: 0, data: {} };
+  let currentVideoEl = null;
+
+  function next(){ state.i = Math.min(state.i + 1, steps.length - 1); render(); }
+  function save(key, value){ state.data[key] = value; }
+
+  function makeVideoStage(videoUrl, titleHtml, bodyEl){
+    const stage = document.createElement("div");
+    stage.className = "stage";
+
+    const vid = document.createElement("video");
+    currentVideoEl = vid;
+
+    vid.autoplay = true;
+    vid.muted = false;  // ✅ بالصوت
+    vid.volume = 1;
+    vid.loop = true;
+    vid.playsInline = true;
+    vid.setAttribute("playsinline", "true");
+
+    const src = document.createElement("source");
+    src.src = videoUrl;
+    src.type = "video/mp4";
+    vid.appendChild(src);
+
+    vid.play().catch(()=>{});
+
+    const shade = document.createElement("div");
+    shade.className = "shade";
+
+    const overlay = document.createElement("div");
+    overlay.className = "overlay";
+
+    const topBar = document.createElement("div");
+    topBar.className = "topBar";
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.innerHTML = titleHtml || "";
+    topBar.appendChild(title);
+
+    const bottomSheet = document.createElement("div");
+    bottomSheet.className = "bottomSheet";
+
+    const panel = document.createElement("div");
+    panel.className = "panel";
+    panel.appendChild(bodyEl);
+
+    bottomSheet.appendChild(panel);
+
+    overlay.appendChild(topBar);
+    overlay.appendChild(bottomSheet);
+
+    stage.appendChild(vid);
+    stage.appendChild(shade);
+    stage.appendChild(overlay);
+    return stage;
+  }
+
+  function optionButton(code, label, onClick){
+    const b = document.createElement("button");
+    b.className = "btn";
+    const row = document.createElement("div");
+    row.className = "opt";
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = code;
+
+    const text = document.createElement("span");
+    text.className = "label";
+    text.textContent = label;
+
+    row.appendChild(badge);
+    row.appendChild(text);
+    b.appendChild(row);
+    b.onclick = onClick;
+    return b;
+  }
+
+  function render(){
+    app.innerHTML = "";
+    const s = steps[state.i];
+
+    if (s.type === "contact_form"){
+      const wrap = document.createElement("div");
+      wrap.className = "formCard";
+
+      const t = document.createElement("div");
+      t.className = "formTitle";
+      t.textContent = s.title;
+      wrap.appendChild(t);
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      const inputs = {};
+
+      s.fields.forEach(f=>{
+        const inp = document.createElement("input");
+        inp.className = "input";
+        inp.placeholder = f.placeholder;
+        inp.value = state.data[f.key] || "";
+        inp.oninput = ()=>{ inputs[f.key] = inp.value; };
+        inputs[f.key] = inp.value;
+        grid.appendChild(inp);
+      });
+
+      wrap.appendChild(grid);
+
+      const btn = document.createElement("button");
+      btn.className = "btn primary";
+      btn.textContent = s.button;
+
+      const msg = document.createElement("div");
+      msg.className = "small";
+
+      btn.onclick = ()=>{
+        for (const f of s.fields){
+          const v = (inputs[f.key] || "").trim();
+          if (f.required && !v){
+            msg.textContent = `Veuillez remplir: ${f.label}`;
+            return;
+          }
+          save(f.key, v);
+        }
+        msg.textContent = "";
+        next();
+      };
+
+      wrap.appendChild(btn);
+      wrap.appendChild(msg);
+      app.appendChild(wrap);
+      return;
+    }
+
+    if (s.type === "video_button"){
+      const body = document.createElement("div");
+      body.className = "choices";
+
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.textContent = s.button;
+      b.onclick = ()=> next();
+
+      body.appendChild(b);
+      app.appendChild(makeVideoStage(s.video, s.title, body));
+      return;
+    }
+
+    if (s.type === "video_choices"){
+      const body = document.createElement("div");
+      body.className = "choices";
+
+      s.choices.forEach(([code,label])=>{
+        body.appendChild(optionButton(code, label, ()=>{ save(s.key, label); next(); }));
+      });
+
+      app.appendChild(makeVideoStage(s.video, s.title, body));
+      return;
+    }
+
+    if (s.type === "video_input"){
+      const body = document.createElement("div");
+      body.className = "choices";
+
+      let inp;
+      if (s.multiline){
+        inp = document.createElement("textarea");
+        inp.rows = 3;
+        inp.style.resize = "none";
+      } else {
+        inp = document.createElement("input");
+      }
+      inp.className = "input";
+      inp.placeholder = s.placeholder || "";
+      inp.value = state.data[s.key] || "";
+
+      const btn = document.createElement("button");
+      btn.className = "btn primary";
+      btn.textContent = "Continuer";
+
+      const msg = document.createElement("div");
+      msg.className = "small";
+
+      btn.onclick = ()=>{
+        const v = (inp.value || "").trim();
+        if (!v){ msg.textContent = "Veuillez remplir ce champ."; return; }
+        save(s.key, v);
+        next();
+      };
+
+      body.appendChild(inp);
+      body.appendChild(btn);
+      body.appendChild(msg);
+
+      app.appendChild(makeVideoStage(s.video, s.title, body));
+      return;
+    }
+
+    if (s.type === "video_choices_ok"){
+      const body = document.createElement("div");
+      body.className = "choices";
+
+      let selected = state.data[s.key] || "";
+
+      const okBtn = document.createElement("button");
+      okBtn.className = "okBtn";
+      okBtn.textContent = "OK";
+
+      const msg = document.createElement("div");
+      msg.className = "small";
+
+      s.choices.forEach(([code,label])=>{
+        body.appendChild(optionButton(code, label, ()=>{
+          selected = label;
+          save(s.key, label);
+          okBtn.style.display = "block";
+          msg.textContent = "Appuie sur OK pour envoyer ✅";
+        }));
+      });
+
+      okBtn.onclick = async ()=>{
+        if (!selected){
+          msg.textContent = "Choisis une option d'abord.";
+          return;
+        }
+        okBtn.disabled = true;
+        okBtn.textContent = "Envoi...";
+        await submitAll();
+        okBtn.textContent = "Envoyé ✅";
+      };
+
+      body.appendChild(okBtn);
+      body.appendChild(msg);
+
+      app.appendChild(makeVideoStage(s.video, s.title, body));
+      return;
+    }
+  }
+
+  async function submitAll(){
+    const payload = { ...state.data, submittedAt: new Date().toISOString(), flow: "videoask-like" };
+    localStorage.setItem("video_form_last", JSON.stringify(payload));
+    if (!WEBHOOK_URL) return;
+
+    try{
+      const res = await fetch(WEBHOOK_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error("Webhook error");
+    }catch(e){}
+  }
+
+  // ✅ زر صوت بدون كلمات (🔊 فقط)
+  soundBtn.onclick = async ()=>{
+    if (!currentVideoEl) return;
+    try{
+      currentVideoEl.muted = false;
+      currentVideoEl.volume = 1;
+      await currentVideoEl.play();
+      soundBtn.textContent = "🔊";
+      setTimeout(()=>{ soundBtn.style.display = "none"; }, 800);
+    }catch(e){}
+  };
+
+  render();
+</script>
+</body>
+</html>
